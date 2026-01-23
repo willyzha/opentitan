@@ -32,6 +32,7 @@ pub enum AttrData {
     ObjectClass(ObjectClass),
     Redacted(Redacted),
     Str(String),
+    ByteString(Vec<u8>),
     List(Vec<AttrData>),
 }
 
@@ -89,6 +90,12 @@ impl From<&[u8]> for AttrData {
     }
 }
 
+impl From<Vec<u8>> for AttrData {
+    fn from(v: Vec<u8>) -> Self {
+        AttrData::ByteString(v)
+    }
+}
+
 pub fn unhex(ch: u8) -> u8 {
     match ch {
         b'0'..=b'9' => ch - b'0',
@@ -103,6 +110,7 @@ impl TryFrom<&AttrData> for Vec<u8> {
     fn try_from(a: &AttrData) -> Result<Self, Self::Error> {
         static HEX: OnceCell<Regex> = OnceCell::new();
         match a {
+            AttrData::ByteString(v) => Ok(v.clone()),
             AttrData::Str(v) => {
                 let hex =
                     HEX.get_or_init(|| Regex::new("^[0-9A-Fa-f]{2}(:[0-9A-Fa-f]{2})*$").unwrap());

@@ -863,6 +863,10 @@ pub enum MechanismType {
     Sp800108FeedbackKdf = CKM_SP800_108_FEEDBACK_KDF,
     #[serde(rename = "CKM_SP800_108_DOUBLE_PIPELINE_KDF")]
     Sp800108DoublePipelineKdf = CKM_SP800_108_DOUBLE_PIPELINE_KDF,
+    #[serde(rename = "CKM_MLDSA_KEY_PAIR_GEN")]
+    MldsaKeyPairGen = 0x1C,
+    #[serde(rename = "CKM_MLDSA")]
+    Mldsa = 0x1D,
     #[serde(rename = "CKM_VENDOR_DEFINED")]
     VendorDefined = CKM_VENDOR_DEFINED,
     #[num_enum(catch_all)]

@@ -642,6 +642,13 @@ pub enum AttributeType {
         serialize = "supported_cms_attributes"
     )]
     SupportedCmsAttributes = CKA_SUPPORTED_CMS_ATTRIBUTES,
+    #[serde(rename = "CKA_PARAMETER_SET")]
+    #[strum(
+        serialize = "CKA_PARAMETER_SET",
+        serialize = "ParameterSet",
+        serialize = "parameter_set"
+    )]
+    ParameterSet = CKA_PARAMETER_SET,
     #[serde(rename = "CKA_PROFILE_ID")]
     #[strum(
         serialize = "CKA_PROFILE_ID",

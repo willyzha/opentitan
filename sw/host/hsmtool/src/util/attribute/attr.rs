@@ -3,8 +3,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use anyhow::Result;
-use cryptoki::object::{Attribute, AttributeInfo, ObjectHandle};
+use cryptoki::object::{Attribute, AttributeInfo, ObjectHandle, ParameterSetType};
 use cryptoki::session::Session;
+use cryptoki::types::Ulong;
 use indexmap::IndexMap;
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
@@ -99,6 +100,10 @@ fn into_kv(attr: &Attribute) -> Result<(AttributeType, AttrData)> {
                 AttrData::from(val),
             ))
         }
+        Attribute::ParameterSet(val) => Ok((
+            AttributeType::from(attr.attribute_type()),
+            AttrData::from(**val),
+        )),
         Attribute::Class(object_class) => {
             let val = ObjectClass::from(*object_class);
             Ok((
@@ -199,6 +204,9 @@ fn from_kv(atype: AttributeType, data: &AttrData) -> Result<Attribute> {
         AttributeType::NeverExtractable => Ok(Attribute::NeverExtractable(data.try_into()?)),
         AttributeType::ObjectId => Ok(Attribute::ObjectId(data.try_into()?)),
         AttributeType::Owner => Ok(Attribute::Owner(data.try_into()?)),
+        AttributeType::ParameterSet => Ok(Attribute::ParameterSet(ParameterSetType::try_from(
+            Ulong::from(u64::try_from(data)?),
+        )?)),
         AttributeType::Prime => Ok(Attribute::Prime(data.try_into()?)),
         AttributeType::Prime1 => Ok(Attribute::Prime1(data.try_into()?)),
         AttributeType::Prime2 => Ok(Attribute::Prime2(data.try_into()?)),
@@ -250,6 +258,7 @@ impl AttributeMap {
         VALID_TYPES
             .get_or_init(|| {
                 AttributeType::iter()
+                    .filter(|&a| a != AttributeType::KeyGenMechanism)
                     .map(|a| Ok(a.try_into()?))
                     .filter(|a| a.is_ok())
                     .collect::<Result<Vec<_>>>()

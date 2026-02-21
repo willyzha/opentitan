@@ -9,7 +9,7 @@
 ### Memories
 
 The OTBN processor core has access to two dedicated memories: an instruction memory (IMEM), and a data memory (DMEM).
-The IMEM is 8 KiB, the DMEM is 4 KiB.
+The IMEM is 16 KiB, the DMEM is 32 KiB.
 
 The memory layout follows the Harvard architecture.
 Both memories are byte-addressed, with addresses starting at 0.
@@ -37,8 +37,8 @@ Functionally it should be impossible for either OTBN or a host processor to make
 OTBN is in the busy state whilst keys are requested so OTBN will not execute any programs and a host processor access will generated an `ILLEGAL_BUS_ACCESS` fatal error.
 Should a request not be granted due to a fault, a `BAD_INTERNAL_STATE` fatal error will be raised.
 
-While DMEM is 4kiB, only the first 3kiB (at addresses `0x0` to `0xbff`) is visible through the register interface.
-This is to allow OTBN applications to store sensitive information in the other 1kiB, making it harder for that information to leak back to Ibex.
+Although the DMEM is 32kiB, only the first 16kiB (at addresses `0x0` to `0x3fff`) is visible through the register interface.
+This is to allow OTBN applications to store sensitive information in the other 16kiB, making it harder for that information to leak back to Ibex.
 
 Each memory write through the register interface updates a checksum.
 See the [Memory Load Integrity](#memory-load-integrity) section for more details.
@@ -449,7 +449,7 @@ This standard choice of generating polynomial makes it compatible with other too
 The stream over which the checksum is computed is the stream of writes that have been seen since the last write to [`LOAD_CHECKSUM`](registers.md#load_checksum).
 Each write is treated as a 48b value, `{imem, idx, wdata}`.
 Here, `imem` is a single bit flag which is one for writes to IMEM and zero for writes to DMEM.
-The `idx` value is the index of the word within the memory, zero extended from 10b to 15b.
+The `idx` value is the index of the word within the memory, zero-extended to 15b.
 Finally, `wdata` is the 32b word that was written.
 Writes that are less than 32b or not aligned on a 32b boundary are ignored and not factored into the CRC calculation.
 

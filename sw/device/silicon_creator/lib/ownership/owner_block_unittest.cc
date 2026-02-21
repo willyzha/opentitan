@@ -67,12 +67,41 @@ class OwnerBlockTest : public rom_test::RomTest {
   )
 // clang-format on
 
-const owner_flash_config_t simple_flash_config = {
+struct owner_flash_config_1 {
+  tlv_header_t header;
+  owner_flash_region_t config[1];
+};
+
+struct owner_flash_config_2 {
+  tlv_header_t header;
+  owner_flash_region_t config[2];
+};
+
+struct owner_flash_config_4 {
+  tlv_header_t header;
+  owner_flash_region_t config[4];
+};
+
+struct owner_flash_config_8 {
+  tlv_header_t header;
+  owner_flash_region_t config[8];
+};
+
+struct owner_flash_config_9 {
+  tlv_header_t header;
+  owner_flash_region_t config[9];
+};
+
+struct owner_flash_info_config_2 {
+  tlv_header_t header;
+  owner_info_page_t config[2];
+};
+
+const owner_flash_config_4 simple_flash_config_wrapped = {
     .header =
         {
             .tag = kTlvTagFlashConfig,
-            .length =
-                sizeof(owner_flash_config_t) + 4 * sizeof(owner_flash_region_t),
+            .length = sizeof(owner_flash_config_4),
         },
     .config =
         {
@@ -147,12 +176,26 @@ const owner_flash_config_t simple_flash_config = {
         },
 };
 
-const owner_flash_info_config_t info_config = {
+const owner_flash_config_t &simple_flash_config =
+    reinterpret_cast<const owner_flash_config_t &>(simple_flash_config_wrapped);
+
+const owner_flash_config_9 flash_config_too_many_entries_wrapped = {
+    .header =
+        {
+            .tag = kTlvTagFlashConfig,
+            .length = sizeof(owner_flash_config_9),
+        },
+};
+
+const owner_flash_config_t &flash_config_too_many_entries =
+    reinterpret_cast<const owner_flash_config_t &>(
+        flash_config_too_many_entries_wrapped);
+
+const owner_flash_info_config_2 info_config_wrapped = {
     .header =
         {
             .tag = kTlvTagInfoConfig,
-            .length =
-                sizeof(owner_flash_config_t) + 2 * sizeof(owner_flash_region_t),
+            .length = sizeof(owner_flash_info_config_2),
         },
     .config =
         {
@@ -194,6 +237,17 @@ const owner_flash_info_config_t info_config = {
 
         },
 };
+
+const owner_flash_info_config_t &info_config =
+    reinterpret_cast<const owner_flash_info_config_t &>(info_config_wrapped);
+
+TEST_F(OwnerBlockTest, FlashConfigTooManyEntries) {
+  uint32_t mp_index = 0;
+  rom_error_t error =
+      owner_block_flash_apply(&flash_config_too_many_entries, kBootSlotA,
+                              /*owner_lockdown=*/0, &mp_index);
+  EXPECT_EQ(error, kErrorOwnershipFlashConfigLength);
+}
 
 // Tests that the flash parameters get applied for side A.
 TEST_F(OwnerBlockTest, FlashConfigApplySideA) {
@@ -451,6 +505,48 @@ TEST_F(OwnerBlockTest, ParseBlockDupIsfb) {
   EXPECT_EQ(error, kErrorOwnershipDuplicateItem);
 }
 
+TEST_F(OwnerBlockTest, IsfbEraseEnableInvalidState) {
+  boot_data_t bootdata = {};
+  bootdata.ownership_state = kOwnershipStateUnlockedAny;
+  owner_config_t owner_config = {};
+  EXPECT_EQ(owner_block_info_isfb_erase_enable(&bootdata, &owner_config),
+            kErrorOk);
+}
+
+TEST_F(OwnerBlockTest, NonExistIsfbConfig) {
+  boot_data_t bootdata = {};
+  bootdata.ownership_state = kOwnershipStateLockedOwner;
+  owner_config_t owner_config = {};
+  owner_config.isfb = (const owner_isfb_config_t *)kHardenedBoolFalse;
+  EXPECT_EQ(owner_block_info_isfb_erase_enable(&bootdata, &owner_config),
+            kErrorOk);
+}
+
+TEST_F(OwnerBlockTest, NonExistInfoConfig) {
+  boot_data_t bootdata = {};
+  bootdata.ownership_state = kOwnershipStateLockedOwner;
+  owner_config_t owner_config = {};
+  owner_config.isfb = (const owner_isfb_config_t *)kHardenedBoolTrue;
+  owner_config.info = (const owner_flash_info_config_t *)kHardenedBoolFalse;
+  EXPECT_EQ(owner_block_info_isfb_erase_enable(&bootdata, &owner_config),
+            kErrorOk);
+}
+
+TEST(OwnerBlockTransferTest, ValidTransfer) {
+  owner_page_valid[1] = kOwnerPageStatusSealed;
+  boot_data_t bootdata = {};
+  bootdata.ownership_state = kOwnershipStateLockedOwner;
+  EXPECT_EQ(owner_block_page1_valid_for_transfer(&bootdata), kHardenedBoolTrue);
+}
+
+const owner_isfb_config_t isfb_config_bad_length = {
+    .header =
+        {
+            .tag = kTlvTagIntegrationSpecificFirmwareBinding,
+            .length = 0,
+        },
+};
+
 const owner_isfb_config_t isfb_config_bad_page = {
     .header =
         {
@@ -492,6 +588,8 @@ TEST_P(OwnerBlockBadIsfbTest, ParseBlockBadIsfb) {
 INSTANTIATE_TEST_SUITE_P(
     AllCases, OwnerBlockBadIsfbTest,
     testing::Values(IsfbError{isfb_config_bad_page, kErrorOwnershipISFBPage},
+                    IsfbError{isfb_config_bad_length,
+                              kErrorOwnershipInvalidTagLength},
                     IsfbError{isfb_config_bad_product_word_count,
                               kErrorOwnershipISFBSize}));
 
@@ -531,12 +629,11 @@ INSTANTIATE_TEST_SUITE_P(
                              kErrorOwnershipISFBVersion}));
 
 // Flash region is the exact size of the ROM_EXT and has a bad ECC setting.
-const owner_flash_config_t invalid_flash_0 = {
+const owner_flash_config_1 invalid_flash_0_wrapped = {
     .header =
         {
             .tag = kTlvTagFlashConfig,
-            .length =
-                sizeof(owner_flash_config_t) + 1 * sizeof(owner_flash_region_t),
+            .length = sizeof(owner_flash_config_1),
         },
     .config =
         {
@@ -560,13 +657,15 @@ const owner_flash_config_t invalid_flash_0 = {
         },
 };
 
+const owner_flash_config_t &invalid_flash_0 =
+    reinterpret_cast<const owner_flash_config_t &>(invalid_flash_0_wrapped);
+
 // Flash region overlaps ROM_EXT and APP.
-const owner_flash_config_t invalid_flash_1 = {
+const owner_flash_config_1 invalid_flash_1_wrapped = {
     .header =
         {
             .tag = kTlvTagFlashConfig,
-            .length =
-                sizeof(owner_flash_config_t) + 1 * sizeof(owner_flash_region_t),
+            .length = sizeof(owner_flash_config_1),
         },
     .config =
         {
@@ -590,13 +689,15 @@ const owner_flash_config_t invalid_flash_1 = {
         },
 };
 
+const owner_flash_config_t &invalid_flash_1 =
+    reinterpret_cast<const owner_flash_config_t &>(invalid_flash_1_wrapped);
+
 // Flash regions straddle ROM_EXT.
-const owner_flash_config_t invalid_flash_2 = {
+const owner_flash_config_2 invalid_flash_2_wrapped = {
     .header =
         {
             .tag = kTlvTagFlashConfig,
-            .length =
-                sizeof(owner_flash_config_t) + 2 * sizeof(owner_flash_region_t),
+            .length = sizeof(owner_flash_config_2),
         },
     .config =
         {
@@ -637,13 +738,15 @@ const owner_flash_config_t invalid_flash_2 = {
         },
 };
 
+const owner_flash_config_t &invalid_flash_2 =
+    reinterpret_cast<const owner_flash_config_t &>(invalid_flash_2_wrapped);
+
 // Flash region is the exact size of the ROM_EXT.
-const owner_flash_config_t invalid_flash_3 = {
+const owner_flash_config_2 invalid_flash_3_wrapped = {
     .header =
         {
             .tag = kTlvTagFlashConfig,
-            .length =
-                sizeof(owner_flash_config_t) + 2 * sizeof(owner_flash_region_t),
+            .length = sizeof(owner_flash_config_2),
         },
     .config =
         {
@@ -685,6 +788,9 @@ const owner_flash_config_t invalid_flash_3 = {
 
 };
 
+const owner_flash_config_t &invalid_flash_3 =
+    reinterpret_cast<const owner_flash_config_t &>(invalid_flash_3_wrapped);
+
 // Flash configuration has too many entries.
 // We don't have to include the entries because the length is checked first
 // and none of the non-existent entries will be accessed.
@@ -698,12 +804,11 @@ const owner_flash_config_t invalid_flash_4 = {
 };
 
 // Flash configuration extends beyond end of flash
-const owner_flash_config_t invalid_flash_5 = {
+const owner_flash_config_1 invalid_flash_5_wrapped = {
     .header =
         {
             .tag = kTlvTagFlashConfig,
-            .length =
-                sizeof(owner_flash_config_t) + 1 * sizeof(owner_flash_region_t),
+            .length = sizeof(owner_flash_config_1),
         },
     .config =
         {
@@ -727,13 +832,15 @@ const owner_flash_config_t invalid_flash_5 = {
         },
 };
 
+const owner_flash_config_t &invalid_flash_5 =
+    reinterpret_cast<const owner_flash_config_t &>(invalid_flash_5_wrapped);
+
 // Flash configuration has too many entries for Slot A.
-const owner_flash_config_t invalid_flash_6 = {
+const owner_flash_config_4 invalid_flash_6_wrapped = {
     .header =
         {
             .tag = kTlvTagFlashConfig,
-            .length =
-                sizeof(owner_flash_config_t) + 4 * sizeof(owner_flash_region_t),
+            .length = sizeof(owner_flash_config_4),
         },
     .config = {{
                    // SideA APP
@@ -805,13 +912,15 @@ const owner_flash_config_t invalid_flash_6 = {
                }},
 };
 
+const owner_flash_config_t &invalid_flash_6 =
+    reinterpret_cast<const owner_flash_config_t &>(invalid_flash_6_wrapped);
+
 // Flash configuration has too many entries for Slot B.
-const owner_flash_config_t invalid_flash_7 = {
+const owner_flash_config_4 invalid_flash_7_wrapped = {
     .header =
         {
             .tag = kTlvTagFlashConfig,
-            .length =
-                sizeof(owner_flash_config_t) + 4 * sizeof(owner_flash_region_t),
+            .length = sizeof(owner_flash_config_4),
         },
     .config = {{
                    // SideB APP
@@ -883,6 +992,33 @@ const owner_flash_config_t invalid_flash_7 = {
                }},
 };
 
+const owner_flash_config_t &invalid_flash_7 =
+    reinterpret_cast<const owner_flash_config_t &>(invalid_flash_7_wrapped);
+
+// Flash configuration has a zero length.
+const owner_flash_config_4 invalid_flash_8_wrapped = {
+    .header =
+        {
+            .tag = kTlvTagFlashConfig,
+            .length = 0,
+        },
+};
+
+const owner_flash_config_t &invalid_flash_8 =
+    reinterpret_cast<const owner_flash_config_t &>(invalid_flash_8_wrapped);
+
+// Flash configuration has mis-aligned length.
+const owner_flash_config_4 invalid_flash_9_wrapped = {
+    .header =
+        {
+            .tag = kTlvTagFlashConfig,
+            .length = sizeof(owner_flash_config_4) + 1,
+        },
+};
+
+const owner_flash_config_t &invalid_flash_9 =
+    reinterpret_cast<const owner_flash_config_t &>(invalid_flash_9_wrapped);
+
 class RomExtFlashConfigTest
     : public OwnerBlockTest,
       public testing::WithParamInterface<
@@ -909,7 +1045,9 @@ INSTANTIATE_TEST_SUITE_P(
         std::make_tuple(&invalid_flash_4, kErrorOwnershipFlashConfigLength),
         std::make_tuple(&invalid_flash_5, kErrorOwnershipFlashConfigBounds),
         std::make_tuple(&invalid_flash_6, kErrorOwnershipFlashConfigSlots),
-        std::make_tuple(&invalid_flash_7, kErrorOwnershipFlashConfigSlots)));
+        std::make_tuple(&invalid_flash_7, kErrorOwnershipFlashConfigSlots),
+        std::make_tuple(&invalid_flash_8, kErrorOwnershipInvalidTagLength),
+        std::make_tuple(&invalid_flash_9, kErrorOwnershipInvalidTagLength)));
 
 struct FlashRegion {
   uint32_t start;
@@ -998,6 +1136,8 @@ testing::Values(
     OwnerBlockLengths{kTlvTagApplicationKey, 512, kErrorOwnershipInvalidTagLength},
     OwnerBlockLengths{kTlvTagFlashConfig, 4, kErrorOwnershipInvalidTagLength},
     OwnerBlockLengths{kTlvTagInfoConfig, 4, kErrorOwnershipInvalidTagLength},
+    OwnerBlockLengths{kTlvTagFlashConfig, 12, kErrorOwnershipInvalidTagLength},
+    OwnerBlockLengths{kTlvTagInfoConfig, 12, kErrorOwnershipInvalidTagLength},
     OwnerBlockLengths{kTlvTagRescueConfig, 12, kErrorOwnershipInvalidTagLength}
 ));
 // clang-format on
@@ -1079,6 +1219,17 @@ testing::Values(
 class FlashInfoCheckTest : public OwnerBlockTest,
                            public testing::WithParamInterface<
                                std::tuple<uint8_t, uint8_t, rom_error_t>> {};
+
+TEST_F(FlashInfoCheckTest, FlashInfoCheckInvalidLength) {
+  const owner_flash_info_config_t info = {
+      .header =
+          {
+              .length = 0,
+          },
+  };
+  EXPECT_EQ(owner_block_flash_info_check(&info),
+            kErrorOwnershipInvalidTagLength);
+}
 
 TEST_P(FlashInfoCheckTest, ValidPage) {
   uint16_t bank, page;

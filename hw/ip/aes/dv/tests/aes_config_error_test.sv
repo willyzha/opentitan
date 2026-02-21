@@ -18,7 +18,8 @@ class aes_config_error_test extends aes_base_test;
 
     cfg.error_types              = 4'b0001;
     cfg.config_error_pct         = 75;
-    cfg.config_error_type_en     = '{key_len:  1'b1,
+    cfg.config_error_type_en     = '{gcm_phase:1'b1,
+                                     key_len:  1'b1,
                                      mode:     1'b1,
                                      rsd_rate: 1'b1,
                                      op:       1'b1};
@@ -51,7 +52,7 @@ class aes_config_error_test extends aes_base_test;
     cfg.fixed_iv_en              = 0;
 
     cfg.random_data_key_iv_order = 0;
-    cfg.sideload_pct             = 30;
+    cfg.sideload_pct             = 50;
 
     `DV_CHECK_RANDOMIZE_FATAL(cfg)
   endfunction

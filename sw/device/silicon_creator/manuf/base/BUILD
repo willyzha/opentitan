@@ -293,7 +293,8 @@ manifest(d = {
     "manuf_state_creator": hex(CONST.MANUF_STATE.PERSO_INITIAL),
     "visibility": ["//visibility:private"],
     "version_major": ROM_EXT_VERSION.MAJOR,
-    "version_minor": ROM_EXT_VERSION.MINOR,
+    # Release: 2025-06-18-RC00
+    "version_minor": "2025061800",
     "security_version": "0xFFFFFFFF",
 })
 
@@ -342,6 +343,7 @@ manifest(d = {
             "//sw/device/silicon_creator/lib/cert",
             "//sw/device/silicon_creator/lib/cert:cdi_0_template_library",
             "//sw/device/silicon_creator/lib/cert:cdi_1_template_library",
+            "//sw/device/silicon_creator/lib/cert:dice_chain",
             "//sw/device/silicon_creator/lib/cert:uds_template_library",
             "//sw/device/silicon_creator/lib/drivers:flash_ctrl",
             "//sw/device/silicon_creator/lib/drivers:hmac",

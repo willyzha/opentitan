@@ -65,9 +65,10 @@
       desc: '''
             Verify the countermeasure(s) GCM.CONFIG.SPARSE.
             Illegally encoded values as well as currently disallowed but legal values are written into the GCM control register via register interface and it is ensured that the values are resolved to the correct legal values.
+            Internal wires carrying the corresponding signals are forced to invalid values and it is ensured that the DUT stops processing data.
             '''
       stage: V2S
-      tests: ["aes_stress", "aes_config_error"]
+      tests: ["aes_stress", "aes_config_error", "aes_gcm_save_restore", "aes_core_fi"]
     }
     {
       name: sec_cm_aux_config_shadow
@@ -223,11 +224,9 @@
       desc: '''
             Verify the countermeasure(s) GHASH.FSM.SPARSE.
             It is ensured that upon forcing the state register of the GHASH FSM to an invalid value, the DUT stops processing data, locks up and triggers a fatal alert.
-
-            Note: The corresponding DV changes to enable testing this countermeasure are upstreamed in a different PR.
             '''
       stage: V2S
-      tests: ["TODO"]
+      tests: ["aes_fi"]
     }
     {
       name: sec_cm_ctrl_sparse
@@ -273,6 +272,15 @@
             '''
       stage: V2S
       tests: ["aes_fi", "aes_control_fi", "aes_ctr_fi"]
+    }
+    {
+      name: sec_cm_ghash_fsm_local_esc
+      desc: '''
+            Verify the countermeasure(s) GHASH.FSM.LOCAL_ESC.
+            Upon detecting a local alert condition it is ensured that the DUT stops processing data, locks up and triggers a fatal alert.
+            '''
+      stage: V2S
+      tests: ["aes_fi", "aes_ghash_fi"]
     }
     {
       name: sec_cm_data_reg_local_esc

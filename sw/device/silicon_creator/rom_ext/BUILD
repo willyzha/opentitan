@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 load("//rules:const.bzl", "CONST", "hex")
-load("//rules:cross_platform.bzl", "dual_cc_library", "dual_inputs")
+load("//rules:cross_platform.bzl", "dual_cc_device_library_of", "dual_cc_library", "dual_inputs")
 load("//rules:linker.bzl", "ld_library")
 load("//rules:manifest.bzl", "manifest")
 load("//rules/opentitan:defs.bzl", "OPENTITAN_CPU", "opentitan_binary")
@@ -14,12 +14,27 @@ load(
     "SLOTS",
     "TEST_OWNER_CONFIGS",
 )
+load("@bazel_skylib//rules:common_settings.bzl", "string_flag")
 
 package(default_visibility = ["//visibility:public"])
 
 filegroup(
     name = "doc_files",
     srcs = glob(["**/*.md"]),
+)
+
+string_flag(
+    name = "secver_write",
+    build_setting_default = "false",
+    values = [
+        "false",
+        "true",
+    ],
+)
+
+config_setting(
+    name = "secver_write_true",
+    flag_values = {":secver_write": "true"},
 )
 
 cc_library(
@@ -84,6 +99,37 @@ cc_test(
 )
 
 cc_library(
+    name = "rom_ext_boot_services",
+    srcs = ["rom_ext_boot_services.c"],
+    hdrs = ["rom_ext_boot_services.h"],
+    deps = [
+        ":rom_ext_boot_policy",
+        ":rom_ext_verify",
+        "//sw/device/silicon_creator/lib:boot_data",
+        "//sw/device/silicon_creator/lib:boot_log",
+        "//sw/device/silicon_creator/lib:error",
+        "//sw/device/silicon_creator/lib:manifest",
+        "//sw/device/silicon_creator/lib/boot_svc:boot_svc_msg",
+        "//sw/device/silicon_creator/lib/drivers:lifecycle",
+        "//sw/device/silicon_creator/lib/ownership:ownership_activate",
+        "//sw/device/silicon_creator/lib/ownership:ownership_unlock",
+        "//sw/device/silicon_creator/lib/rescue",
+    ],
+)
+
+cc_test(
+    name = "rom_ext_boot_services_unittest",
+    srcs = ["rom_ext_boot_services_unittest.cc"],
+    deps = [
+        ":rom_ext_boot_services",
+        dual_cc_device_library_of("//sw/device/silicon_creator/lib/boot_svc:boot_svc_header"),
+        "//sw/device/silicon_creator/lib/rescue:rescue_null",
+        "//sw/device/silicon_creator/testing:rom_test",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_library(
     name = "rom_ext_isrs",
     srcs = [
         "rom_ext_isrs.c",
@@ -101,6 +147,24 @@ cc_library(
         "//sw/device/lib/base:macros",
         "//sw/device/silicon_creator/lib:dbg_print",
         "//sw/device/silicon_creator/lib:error",
+    ],
+)
+
+cc_library(
+    name = "rom_ext_verify",
+    srcs = ["rom_ext_verify.c"],
+    hdrs = ["rom_ext_verify.h"],
+    deps = [
+        ":rom_ext_boot_policy",
+        "//sw/device/silicon_creator/lib:boot_data",
+        "//sw/device/silicon_creator/lib:dbg_print",
+        "//sw/device/silicon_creator/lib:error",
+        "//sw/device/silicon_creator/lib:manifest",
+        "//sw/device/silicon_creator/lib/base:boot_measurements",
+        "//sw/device/silicon_creator/lib/ownership:isfb",
+        "//sw/device/silicon_creator/lib/ownership:owner_block",
+        "//sw/device/silicon_creator/lib/ownership:owner_verify",
+        "//sw/device/silicon_creator/lib/sigverify:usage_constraints",
     ],
 )
 
@@ -153,6 +217,7 @@ ld_library(
         deps = [
             ":rom_ext_boot_policy",
             ":rom_ext_boot_policy_ptrs",
+            ":rom_ext_boot_services",
             ":rom_ext_isrs",
             ":rom_ext_manifest",
             "//hw/top:flash_ctrl_c_regs",
@@ -189,7 +254,9 @@ ld_library(
             "//sw/device/silicon_creator/lib/drivers:retention_sram",
             "//sw/device/silicon_creator/lib/drivers:rnd",
             "//sw/device/silicon_creator/lib/drivers:uart",
+            "//sw/device/silicon_creator/lib/drivers:watchdog",
             "//sw/device/silicon_creator/lib/ownership",
+            "//sw/device/silicon_creator/lib/ownership:isfb",
             "//sw/device/silicon_creator/lib/ownership:owner_verify",
             "//sw/device/silicon_creator/lib/ownership:ownership_activate",
             "//sw/device/silicon_creator/lib/ownership:ownership_unlock",

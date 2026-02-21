@@ -110,6 +110,7 @@ rust_library(
         "src/commands/kdf/import.rs",
         "src/commands/kdf/mod.rs",
         "src/commands/mldsa/export.rs",
+        "src/commands/mldsa/endorse_cert.rs",
         "src/commands/mldsa/export_csr.rs",
         "src/commands/mldsa/generate.rs",
         "src/commands/mldsa/import.rs",

@@ -11,6 +11,7 @@ use crate::commands::Dispatch;
 use crate::module::Module;
 
 pub mod export;
+pub mod endorse_cert;
 pub mod export_csr;
 pub mod generate;
 pub mod import;
@@ -21,6 +22,7 @@ pub mod verify;
 pub enum Mldsa {
     Generate(generate::Generate),
     Export(export::Export),
+    EndorseCert(endorse_cert::EndorseCert),
     ExportCsr(export_csr::ExportCsr),
     Import(import::Import),
     Sign(sign::Sign),
@@ -38,6 +40,7 @@ impl Dispatch for Mldsa {
         match self {
             Mldsa::Generate(x) => x.run(context, hsm, session),
             Mldsa::Export(x) => x.run(context, hsm, session),
+            Mldsa::EndorseCert(x) => x.run(context, hsm, session),
             Mldsa::ExportCsr(x) => x.run(context, hsm, session),
             Mldsa::Import(x) => x.run(context, hsm, session),
             Mldsa::Sign(x) => x.run(context, hsm, session),
@@ -51,6 +54,7 @@ impl Dispatch for Mldsa {
         match self {
             Mldsa::Generate(x) => x.leaf(),
             Mldsa::Export(x) => x.leaf(),
+            Mldsa::EndorseCert(x) => x.leaf(),
             Mldsa::ExportCsr(x) => x.leaf(),
             Mldsa::Import(x) => x.leaf(),
             Mldsa::Sign(x) => x.leaf(),
